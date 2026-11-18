@@ -1,5 +1,15 @@
 ---
-title: "Analyzing NBA Recruits"
+title: "Analyzing Americans' Time Use"
 author: "krice30-eng"
-format: html
+execute:
+  echo: false
 ---
+
+```{r}
+#| message: false
+
+library(tidyverse)
+library(DBI)
+library(duckdb)
+library(dbplyr)
+```
