@@ -8,7 +8,7 @@
 
 <meta name="author" content="krice30-eng">
 
-<title>Analyzing Americans’ Time Use</title>
+<title>Crypto Markets</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -40,7 +40,7 @@ ul.task-list li input[type="checkbox"] {
 <link href="analysis_files/libs/quarto-html/quarto-syntax-highlighting-bf27225e3a48a9273f3daa8f8e829971.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="analysis_files/libs/bootstrap/bootstrap.min.js"></script>
 <link href="analysis_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="analysis_files/libs/bootstrap/bootstrap-5dce3422ae1aaea6fd35e22067a0726d.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="analysis_files/libs/bootstrap/bootstrap-5bf103b668a3727b4c41d7a443854fdd.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 
 
 </head>
@@ -53,7 +53,8 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Analyzing Americans’ Time Use</h1>
+<h1 class="title">Crypto Markets</h1>
+<p class="subtitle lead">A visual summary of crypto market composition and Bitcoin’s price</p>
 </div>
 
 
@@ -76,6 +77,30 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
+<section id="market-cap-composition" class="level2">
+<h2 class="anchored" data-anchor-id="market-cap-composition">Market-cap composition</h2>
+<p>Each date is normalized to 100% to show how the market’s category mix changes over time. Shaded bands mark the Luna/UST crash and FTX collapse.</p>
+<div class="cell">
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in ggplot2::annotate("label", x = as.Date("2022-05-09"), y = 0.98, :
+Ignoring unknown parameters: `label.size`</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in ggplot2::annotate("label", x = as.Date("2022-11-09"), y = 0.82, :
+Ignoring unknown parameters: `label.size`</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="analysis_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="bitcoin-price" class="level2">
+<h2 class="anchored" data-anchor-id="bitcoin-price">Bitcoin price</h2>
+<p>Bitcoin’s daily price provides a familiar benchmark alongside the category-level market-cap shares.</p>
 <div class="cell">
 <div class="cell-output-display">
 <div>
@@ -85,15 +110,7 @@ ul.task-list li input[type="checkbox"] {
 </div>
 </div>
 </div>
-<div class="cell">
-<div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="analysis_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
-</div>
-</div>
-</div>
+</section>
 
 </main>
 <!-- /main column -->
