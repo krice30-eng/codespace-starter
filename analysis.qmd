@@ -1,109 +1,170 @@
 ---
-title: "Analyzing Americans' Time Use"
+title: "Crypto Markets"
 author: "krice30-eng"
+format: html
 execute:
   echo: false
 ---
 
 ```{r}
 #| message: false
-
 library(tidyverse)
-library(DBI)
-library(duckdb)
-library(dbplyr)
-```
-
-```{r}
-#| message: false
-
-con <- dbConnect(duckdb(), dbdir = "data/atus.duckdb", read_only = TRUE)
-
-dbplyr_act <- tbl(con, "activities")
-dbplyr_resp <- tbl(con, "respondents")
-dbplyr_codes <- tbl(con, "activity_codes")
+library(arrow)
 ```
 
 ```{r}
 #| cache: true
-activity_avg <- dbplyr_resp |>
-  filter(day_type == "Weekday", employment_status == "Not in labor force") |>
-  inner_join(dbplyr_act, by = "tucaseid") |>
-  inner_join(dbplyr_codes, by = "activity_code") |>
-  group_by(sex, tucaseid, major_name) |>
-  summarise(person_minutes = sum(duration_min, na.rm = TRUE), .groups = "drop") |>
-  group_by(sex, major_name) |>
-  summarise(avg_minutes = mean(person_minutes, na.rm = TRUE), .groups = "drop") |>
-  collect()
-```
-
-```{r}
-#| message: false
-
-activity_avg |>
-  filter(major_name != "Data Codes") |>
-  mutate(major_name = forcats::fct_reorder(major_name, avg_minutes, .fun = mean)) |>
-  ggplot(aes(x = major_name, y = avg_minutes, fill = sex)) +
-  geom_col(position = position_dodge(width = 0.8)) +
-  coord_flip() +
-  labs(
-    title = "Average Daily Activity Time by Sex",
-    subtitle = "Weekdays, adults not in the labor force",
-    x = "Activity category",
-    y = "Average daily minutes",
-    fill = "Sex",
-    caption = "Source: American Time Use Survey (ATUS)."
+prices <- arrow::read_parquet("data/daily_prices.parquet")
+metadata <- arrow::read_parquet("data/coin_metadata.parquet")
+categories <- arrow::read_parquet("data/categories.parquet")
+crypto <- prices |>
+  dplyr::mutate(date = as.Date(date_raw)) |>
+  dplyr::left_join(metadata, by = "coin_id") |>
+  dplyr::left_join(
+    categories |> dplyr::select(category_id, category_name),
+    by = "category_id"
   )
 ```
 
 ```{r}
-#| cache: true
-hourly_avg <- dbplyr_resp |>
-  filter(
-    day_type == "Weekday",
-    employment_status %in% c("Unemployed", "Not in labor force")
+crypto |>
+  dplyr::group_by(date, category_name) |>
+  dplyr::summarize(
+    category_market_cap_usd = sum(market_cap_usd, na.rm = TRUE),
+    .groups = "drop"
   ) |>
-  inner_join(dbplyr_act, by = "tucaseid") |>
-  inner_join(dbplyr_codes, by = "activity_code") |>
-  mutate(hour = floor(start_hhmm / 100)) |>
-  filter(
-    hour >= 6,
-    hour <= 23,
-    major_name %in% c(
-      "Eating and Drinking",
-      "Household Activities",
-      "Personal Care Activities",
-      "Socializing, Relaxing, and Leisure"
+  tidyr::complete(
+    date,
+    category_name,
+    fill = list(category_market_cap_usd = 0)
+  ) |>
+  dplyr::mutate(
+    category_name = forcats::fct_reorder(
+      category_name,
+      category_market_cap_usd,
+      .fun = mean,
+      .desc = TRUE
     )
   ) |>
-  group_by(sex, tucaseid, hour, major_name) |>
-  summarise(person_minutes = sum(duration_min, na.rm = TRUE), .groups = "drop") |>
-  group_by(sex, hour, major_name) |>
-  summarise(avg_minutes = mean(person_minutes, na.rm = TRUE), .groups = "drop") |>
-  collect()
+  ggplot2::ggplot(
+    ggplot2::aes(x = date, y = category_market_cap_usd, fill = category_name)
+  ) +
+  ggplot2::geom_area(position = "fill") +
+  ggplot2::annotate(
+    "rect",
+    xmin = as.Date("2022-05-07"),
+    xmax = as.Date("2022-05-12"),
+    ymin = 0,
+    ymax = 1,
+    fill = "grey20",
+    alpha = 0.18
+  ) +
+  ggplot2::annotate(
+    "label",
+    x = as.Date("2022-05-09"),
+    y = 0.98,
+    label = "Luna/UST crash\nMay 7-12, 2022",
+    size = 2.8,
+    vjust = 1,
+    label.size = 0.15
+  ) +
+  ggplot2::annotate(
+    "rect",
+    xmin = as.Date("2022-11-08"),
+    xmax = as.Date("2022-11-11"),
+    ymin = 0,
+    ymax = 1,
+    fill = "grey20",
+    alpha = 0.18
+  ) +
+  ggplot2::annotate(
+    "label",
+    x = as.Date("2022-11-09"),
+    y = 0.82,
+    label = "FTX collapse\nNov 8-11, 2022",
+    size = 2.8,
+    vjust = 1,
+    label.size = 0.15
+  ) +
+  ggplot2::labs(
+    title = "Cryptocurrency Market-Cap Share by Category",
+    subtitle = "Daily market-cap share by category; bands sum to 100% on each date.",
+    x = "Date",
+    y = "Share of total market capitalization",
+    fill = "Category",
+    caption = "Source: daily_prices.parquet, coin_metadata.parquet, and categories.parquet."
+  ) +
+  ggplot2::scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  ggplot2::scale_y_continuous(
+    labels = scales::label_percent(),
+    breaks = seq(0, 1, by = 0.25),
+    expand = c(0, 0)
+  ) +
+  ggplot2::scale_fill_viridis_d(option = "viridis") +
+  ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme(
+    legend.position = "bottom",
+    panel.grid.minor = ggplot2::element_blank(),
+    plot.title = ggplot2::element_text(face = "bold"),
+    plot.caption = ggplot2::element_text(hjust = 0)
+  )
 ```
 
 ```{r}
-#| message: false
+metadata |>
+  dplyr::select(coin_id, coin_name, launch_date) |>
+  dplyr::arrange(coin_id) |>
+  print(n = Inf)
+```
 
-ggplot(
-  hourly_avg,
-  aes(x = hour, y = avg_minutes, fill = major_name, group = major_name)
-) +
-  geom_area(position = "stack") +
-  facet_wrap(vars(sex), ncol = 1) +
-  scale_x_continuous(
-    breaks = c(seq(6, 21, by = 3), 23),
-    labels = function(hour) sprintf("%02d:00", hour)
+```{r}
+metadata <- metadata |>
+  dplyr::mutate(
+    launch_date_parsed = as.Date(
+      lubridate::parse_date_time(launch_date, orders = c("ymd", "B d, Y"))
+    )
+  )
+
+stopifnot(!anyNA(metadata$launch_date_parsed))
+
+metadata |>
+  dplyr::select(coin_id, coin_name, launch_date, launch_date_parsed) |>
+  dplyr::arrange(launch_date_parsed) |>
+  print(n = Inf)
+```
+
+```{r}
+arrow::open_dataset("data/daily_prices.parquet") |> arrow::schema()
+```
+
+```{r}
+arrow::open_dataset("data/daily_prices.parquet") |>
+  dplyr::collect() |>
+  dplyr::slice_sample(n = 10) |>
+  tibble::as_tibble()
+```
+
+```{r}
+arrow::open_dataset("data/daily_prices.parquet") |>
+  dplyr::filter(date_raw >= "2025-01-01") |>
+  dplyr::group_by(coin_id) |>
+  dplyr::summarize(avg_market_cap_usd = mean(market_cap_usd, na.rm = TRUE)) |>
+  dplyr::arrange(dplyr::desc(avg_market_cap_usd)) |>
+  dplyr::collect() |>
+  tibble::as_tibble() |>
+  print(n = Inf)
+```
+
+```{r}
+prices |>
+  dplyr::filter(coin_id == "btc") |>
+  ggplot2::ggplot(ggplot2::aes(x = as.Date(date_raw), y = price_usd)) +
+  ggplot2::geom_line() +
+  ggplot2::labs(
+    title = "Bitcoin Daily Price",
+    x = "Date",
+    y = "Price (USD)"
   ) +
-  labs(
-    title = "How the Day Fills Up",
-    subtitle = "Weekdays; unemployed or not in the labor force",
-    x = "Time of day",
-    y = "Average minutes",
-    fill = "Activity category",
-    caption = "Source: American Time Use Survey (ATUS)."
-  ) +
-  theme_minimal() +
-  theme(plot.margin = margin(12, 12, 12, 12))
+  ggplot2::scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  ggplot2::theme_minimal()
 ```
