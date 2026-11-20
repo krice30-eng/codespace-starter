@@ -1,7 +1,12 @@
 ---
 title: "Crypto Markets"
 author: "krice30-eng"
-format: html
+subtitle: "A visual summary of crypto market composition and Bitcoin's price"
+format:
+  html:
+    theme: cosmo
+    page-layout: article
+    toc: false
 execute:
   echo: false
 ---
@@ -25,6 +30,11 @@ crypto <- prices |>
     by = "category_id"
   )
 ```
+
+## Market-cap composition
+
+Each date is normalized to 100% to show how the market's category mix changes
+over time. Shaded bands mark the Luna/UST crash and FTX collapse.
 
 ```{r}
 crypto |>
@@ -101,7 +111,7 @@ crypto |>
     expand = c(0, 0)
   ) +
   ggplot2::scale_fill_viridis_d(option = "viridis") +
-  ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme_minimal(base_size = 12) +
   ggplot2::theme(
     legend.position = "bottom",
     panel.grid.minor = ggplot2::element_blank(),
@@ -110,61 +120,26 @@ crypto |>
   )
 ```
 
-```{r}
-metadata |>
-  dplyr::select(coin_id, coin_name, launch_date) |>
-  dplyr::arrange(coin_id) |>
-  print(n = Inf)
-```
+## Bitcoin price
 
-```{r}
-metadata <- metadata |>
-  dplyr::mutate(
-    launch_date_parsed = as.Date(
-      lubridate::parse_date_time(launch_date, orders = c("ymd", "B d, Y"))
-    )
-  )
-
-stopifnot(!anyNA(metadata$launch_date_parsed))
-
-metadata |>
-  dplyr::select(coin_id, coin_name, launch_date, launch_date_parsed) |>
-  dplyr::arrange(launch_date_parsed) |>
-  print(n = Inf)
-```
-
-```{r}
-arrow::open_dataset("data/daily_prices.parquet") |> arrow::schema()
-```
-
-```{r}
-arrow::open_dataset("data/daily_prices.parquet") |>
-  dplyr::collect() |>
-  dplyr::slice_sample(n = 10) |>
-  tibble::as_tibble()
-```
-
-```{r}
-arrow::open_dataset("data/daily_prices.parquet") |>
-  dplyr::filter(date_raw >= "2025-01-01") |>
-  dplyr::group_by(coin_id) |>
-  dplyr::summarize(avg_market_cap_usd = mean(market_cap_usd, na.rm = TRUE)) |>
-  dplyr::arrange(dplyr::desc(avg_market_cap_usd)) |>
-  dplyr::collect() |>
-  tibble::as_tibble() |>
-  print(n = Inf)
-```
+Bitcoin's daily price provides a familiar benchmark alongside the category-level
+market-cap shares.
 
 ```{r}
 prices |>
   dplyr::filter(coin_id == "btc") |>
   ggplot2::ggplot(ggplot2::aes(x = as.Date(date_raw), y = price_usd)) +
-  ggplot2::geom_line() +
+  ggplot2::geom_line(color = "#F7931A", linewidth = 0.65) +
   ggplot2::labs(
-    title = "Bitcoin Daily Price",
+    title = "Bitcoin's daily price",
     x = "Date",
     y = "Price (USD)"
   ) +
   ggplot2::scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  ggplot2::theme_minimal()
+  ggplot2::scale_y_continuous(labels = scales::label_dollar(accuracy = 1)) +
+  ggplot2::theme_minimal(base_size = 12) +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    plot.title = ggplot2::element_text(face = "bold")
+  )
 ```
